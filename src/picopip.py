@@ -9,7 +9,12 @@ This makes picopip ideal for vendoring alongside software that needs
 
 Note: This tool only supports modern Python packaging metadata (.dist-info)
 and does not support legacy .egg-info or .egg formats.
+
+Version: 0.1.0
+Author: Alessandro Molina <alessandro.molina@posit.co>
+License: MIT
 """
+
 import logging
 from importlib.metadata import PathDistribution
 from pathlib import Path
@@ -42,7 +47,9 @@ def get_site_package_paths(venv_path: str) -> set[Path]:
         except Exception as exc:
             # Ignore unreadable or malformed .pth
             log.warning(
-                "Invalid .pth files %s: %s", pth_file, exc,
+                "Invalid .pth files %s: %s",
+                pth_file,
+                exc,
             )
             continue
 
@@ -60,13 +67,16 @@ def get_packages_from_env(venv_path: str) -> list[tuple[str, str]]:
                 version = dist.version
                 if not name:
                     log.error(
-                        "Missing package name in metadata for %s (skipping entry)", dist_info
+                        "Missing package name in metadata for %s (skipping entry)",
+                        dist_info,
                     )
                     continue
                 packages.append((name, version))
             except Exception as exc:
                 log.warning(
-                    "Failed to read package metadata for %s: %s", dist_info, exc,
+                    "Failed to read package metadata for %s: %s",
+                    dist_info,
+                    exc,
                 )
                 continue
     return sorted(packages, key=lambda x: x[0].lower())

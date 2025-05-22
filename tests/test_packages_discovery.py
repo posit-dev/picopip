@@ -1,7 +1,8 @@
+from pathlib import Path
+
 import pytest
 
 from picopip import get_packages_from_env, get_site_package_paths
-from pathlib import Path
 
 
 @pytest.fixture
