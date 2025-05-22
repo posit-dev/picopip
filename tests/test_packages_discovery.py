@@ -1,7 +1,7 @@
-from pathlib import Path
-import venv
-import tempfile
 import subprocess
+import tempfile
+import venv
+from pathlib import Path
 
 import pytest
 
@@ -139,9 +139,9 @@ def test_get_packages_from_env_malformed(fake_venv):
 def test_e2e_readme_example():
     with tempfile.TemporaryDirectory() as tmpdir:
         venv.create(tmpdir, with_pip=True)
-        subprocess.run([
-            f"{tmpdir}/bin/python", "-m", "pip", "install", "requests"
-        ], check=True)
+        subprocess.run(
+            [f"{tmpdir}/bin/python", "-m", "pip", "install", "requests"], check=True
+        )
         pkgs = get_packages_from_env(tmpdir)
         # Should find at least pip and requests
         pkg_names = {name for name, _ in pkgs}

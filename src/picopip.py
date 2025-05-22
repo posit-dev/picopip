@@ -18,6 +18,7 @@ License: MIT
 import logging
 from importlib.metadata import PathDistribution
 from pathlib import Path
+from typing import Optional
 
 log = logging.getLogger(__name__)
 
@@ -80,3 +81,14 @@ def get_packages_from_env(venv_path: str) -> list[tuple[str, str]]:
                 )
                 continue
     return sorted(packages, key=lambda x: x[0].lower())
+
+
+def get_package_version_from_env(venv_path: str, package_name: str) -> Optional[str]:
+    """Return the version of a package installed in the given venv.
+
+    Returns None if not found or not installed.
+    """
+    for name, version in get_packages_from_env(venv_path):
+        if name.lower() == package_name.lower():
+            return version
+    return None
