@@ -15,7 +15,7 @@ You can use `get_packages_from_env` to list all installed packages in a Python v
 ```python
 >>> from picopip import get_packages_from_env
 >>>
->>> pkgs = get_packages_from_env(tmpdir)
+>>> pkgs = get_packages_from_env(venvdir)
 >>> print(pkgs)
 [('certifi', '2025.4.26'), ('charset-normalizer', '3.4.2'), ('idna', '3.10'), 
  ('pip', '21.2.4'), ('requests', '2.32.3'), ('setuptools', '58.0.4'), 
