@@ -5,3 +5,23 @@ Embed-friendly Python env/package scanner with zero deps.
 This is primarily designed so that you can take `src/picopip.py`
 and copy it into your own project to use it without having
 to install dependencies.
+
+## Usage
+
+### Get list of installed packages
+
+You can use `get_packages_from_env` to list all installed packages in a Python virtual environment. Here's how to do it using Python's built-in `venv` module:
+
+```python
+>>> from picopip import get_packages_from_env
+>>>
+>>> pkgs = get_packages_from_env(tmpdir)
+>>> print(pkgs)
+[('certifi', '2025.4.26'), ('charset-normalizer', '3.4.2'), ('idna', '3.10'), 
+ ('pip', '21.2.4'), ('requests', '2.32.3'), ('setuptools', '58.0.4'), 
+ ('urllib3', '2.4.0')]
+```
+
+- `get_packages_from_env(<venv_path>)` returns a list of `(name, version)` tuples for all installed packages in the given virtual environment.
+- You can use any venv path, and the function will find all packages, including those installed via pip.
+
