@@ -25,3 +25,15 @@ You can use `get_packages_from_env` to list all installed packages in a Python v
 - `get_packages_from_env(<venv_path>)` returns a list of `(name, version)` tuples for all installed packages in the given virtual environment.
 - You can use any venv path, and the function will find all packages, including those installed via pip.
 
+### Get version of a package
+
+If you only need the version of a specific package, you can get it
+using `get_package_version_from_env`
+
+```python
+>>> from picopip import get_package_version_from_env
+>>>
+>>> version = get_package_version_from_env(venvdir, "pip")
+>>> print(version)
+'21.2.4'
+```
