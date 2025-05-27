@@ -12,6 +12,7 @@ and does not support legacy .egg-info or .egg formats.
 
 Version: 0.1.0
 Author: Alessandro Molina <alessandro.molina@posit.co>
+URL: https://github.com/posit-dev/picopip
 License: MIT
 """
 
