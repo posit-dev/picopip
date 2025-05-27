@@ -1,3 +1,5 @@
+# Copyright (C) 2025 by Posit Software, PBC.
+
 """picopip replicates features of pip within a compact single-file codebase.
 
 Its primary purpose is to provide essential pip-like functionality for
