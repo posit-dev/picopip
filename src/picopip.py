@@ -12,12 +12,13 @@ This makes picopip ideal for vendoring alongside software that needs
 Note: This tool only supports modern Python packaging metadata (.dist-info)
 and does not support legacy .egg-info or .egg formats.
 
-Version: 0.1.1
+Version: 0.2.0
 Author: Alessandro Molina <alessandro.molina@posit.co>
 URL: https://github.com/posit-dev/picopip
 License: MIT
 """
 
+import site
 import logging
 from importlib.metadata import PathDistribution
 from pathlib import Path
@@ -57,6 +58,20 @@ def get_site_package_paths(venv_path: str) -> Set[Path]:
             )
             continue
 
+    # Include system site-packages if enabled in venv
+    # See https://github.com/python/cpython/blob/a10b321a5807ba924c7a7833692fe5d0dc40e875/Lib/site.py#L618-L632
+    cfg_path = Path(venv_path) / "pyvenv.cfg"
+    if cfg_path.exists():
+        content = cfg_path.read_text().splitlines()
+        for line in content:
+            line = line.strip().lower()
+            if line.startswith("include-system-site-packages"):
+                include_system_site = line.split("=", 1)[1].strip()
+                if include_system_site == "true":
+                    for sys_path in site.getsitepackages():
+                        scan_paths.add(Path(sys_path))
+                break
+
     return scan_paths
 
 
@@ -64,7 +79,9 @@ def get_packages_from_env(venv_path: str) -> List[Tuple[str, str]]:
     """Return a list of (name, version) for all installed packages in the given venv."""
     packages = []
     for path in get_site_package_paths(venv_path):
+        log.debug(f"Scanning {path} for installed packages...")
         for dist_info in path.glob("*.dist-info"):
+            log.debug(f"Found distribution info: {dist_info}")
             try:
                 dist = PathDistribution(dist_info)
                 name = dist.metadata["Name"]
