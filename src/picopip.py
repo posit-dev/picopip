@@ -21,7 +21,7 @@ License: MIT
 import logging
 from importlib.metadata import PathDistribution
 from pathlib import Path
-from typing import Optional, Set, List, Tuple
+from typing import List, Optional, Set, Tuple
 
 log = logging.getLogger(__name__)
 
