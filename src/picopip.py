@@ -12,7 +12,7 @@ This makes picopip ideal for vendoring alongside software that needs
 Note: This tool only supports modern Python packaging metadata (.dist-info)
 and does not support legacy .egg-info or .egg formats.
 
-Version: 0.1.0
+Version: 0.1.1
 Author: Alessandro Molina <alessandro.molina@posit.co>
 URL: https://github.com/posit-dev/picopip
 License: MIT
@@ -21,12 +21,12 @@ License: MIT
 import logging
 from importlib.metadata import PathDistribution
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Set, List, Tuple
 
 log = logging.getLogger(__name__)
 
 
-def get_site_package_paths(venv_path: str) -> set[Path]:
+def get_site_package_paths(venv_path: str) -> Set[Path]:
     """Return all directories where packages might be installed for the given venv."""
     for version_dir in (Path(venv_path) / "lib").iterdir():
         if version_dir.name.startswith("python"):
@@ -60,7 +60,7 @@ def get_site_package_paths(venv_path: str) -> set[Path]:
     return scan_paths
 
 
-def get_packages_from_env(venv_path: str) -> list[tuple[str, str]]:
+def get_packages_from_env(venv_path: str) -> List[Tuple[str, str]]:
     """Return a list of (name, version) for all installed packages in the given venv."""
     packages = []
     for path in get_site_package_paths(venv_path):
