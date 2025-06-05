@@ -18,16 +18,16 @@ URL: https://github.com/posit-dev/picopip
 License: MIT
 """
 
-import site
 import logging
+import site
 from importlib.metadata import PathDistribution
 from pathlib import Path
-from typing import List, Optional, Set, Tuple
+from typing import List, Optional, Tuple
 
 log = logging.getLogger(__name__)
 
 
-def get_site_package_paths(venv_path: str) -> Set[Path]:
+def get_site_package_paths(venv_path: str) -> List[Path]:
     """Return all directories where packages might be installed for the given venv."""
     for version_dir in (Path(venv_path) / "lib").iterdir():
         if version_dir.name.startswith("python"):
@@ -37,7 +37,8 @@ def get_site_package_paths(venv_path: str) -> Set[Path]:
         msg = "Cannot locate site-packages in lib/pythonX.Y"
         raise RuntimeError(msg)
 
-    scan_paths = {site_packages.absolute()}
+    seen = {site_packages}
+    scan_paths = [site_packages]
 
     for pth_file in site_packages.glob("*.pth"):
         try:
@@ -47,8 +48,9 @@ def get_site_package_paths(venv_path: str) -> Set[Path]:
                     if not line or line.startswith("#") or "import" in line:
                         continue
                     pth_path = (site_packages / line).absolute()
-                    if pth_path.exists() and pth_path.is_dir():
-                        scan_paths.add(pth_path)
+                    if pth_path.exists() and pth_path.is_dir() and pth_path not in seen:
+                        scan_paths.append(pth_path)
+                        seen.add(pth_path)
         except Exception as exc:
             # Ignore unreadable or malformed .pth
             log.warning(
@@ -58,25 +60,18 @@ def get_site_package_paths(venv_path: str) -> Set[Path]:
             )
             continue
 
-    # Include system site-packages if enabled in venv
-    # See https://github.com/python/cpython/blob/a10b321a5807ba924c7a7833692fe5d0dc40e875/Lib/site.py#L618-L632
-    cfg_path = Path(venv_path) / "pyvenv.cfg"
-    if cfg_path.exists():
-        content = cfg_path.read_text().splitlines()
-        for line in content:
-            line = line.strip().lower()
-            if line.startswith("include-system-site-packages"):
-                include_system_site = line.split("=", 1)[1].strip()
-                if include_system_site == "true":
-                    for sys_path in site.getsitepackages():
-                        scan_paths.add(Path(sys_path))
-                break
+    # Append them at the end, so that venv site-packages are scanned first
+    for system_path in _find_system_packages(venv_path):
+        if system_path not in seen:
+            scan_paths.append(system_path)
+            seen.add(system_path)
 
     return scan_paths
 
 
 def get_packages_from_env(venv_path: str) -> List[Tuple[str, str]]:
     """Return a list of (name, version) for all installed packages in the given venv."""
+    seen = set()
     packages = []
     for path in get_site_package_paths(venv_path):
         log.debug(f"Scanning {path} for installed packages...")
@@ -84,15 +79,18 @@ def get_packages_from_env(venv_path: str) -> List[Tuple[str, str]]:
             log.debug(f"Found distribution info: {dist_info}")
             try:
                 dist = PathDistribution(dist_info)
-                name = dist.metadata["Name"]
+                raw_name = dist.metadata["Name"]
                 version = dist.version
-                if not name:
+                if not raw_name:
                     log.error(
                         "Missing package name in metadata for %s (skipping entry)",
                         dist_info,
                     )
                     continue
-                packages.append((name, version))
+                name = raw_name.lower()
+                if name in seen:
+                    seen.add(name)
+                    packages.append((raw_name, version))
             except Exception as exc:
                 log.warning(
                     "Failed to read package metadata for %s: %s",
@@ -112,3 +110,23 @@ def get_package_version_from_env(venv_path: str, package_name: str) -> Optional[
         if name.lower() == package_name.lower():
             return version
     return None
+
+
+def _find_system_packages(venv_path: str) -> List[Path]:
+    """Return scan paths for system packages if enabled in the venv."""
+    scan_paths = []
+
+    # See https://github.com/python/cpython/blob/a10b321a5807ba924c7a7833692fe5d0dc40e875/Lib/site.py#L618-L632
+    cfg_path = Path(venv_path) / "pyvenv.cfg"
+    if cfg_path.exists():
+        content = cfg_path.read_text().splitlines()
+        for raw_line in content:
+            line = raw_line.strip().lower()
+            if line.startswith("include-system-site-packages"):
+                include_system_site = line.split("=", 1)[1].strip()
+                if include_system_site == "true":
+                    for sys_path in site.getsitepackages():
+                        scan_paths.append(Path(sys_path))
+                break
+
+    return scan_paths
