@@ -88,7 +88,7 @@ def get_packages_from_env(venv_path: str) -> List[Tuple[str, str]]:
                     )
                     continue
                 name = raw_name.lower()
-                if name in seen:
+                if name not in seen:
                     seen.add(name)
                     packages.append((raw_name, version))
             except Exception as exc:
