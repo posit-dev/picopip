@@ -60,7 +60,7 @@ def get_site_package_paths(venv_path: str) -> List[Path]:
             )
             continue
 
-    # Append them at the end, so that venv site-packages are scanned first
+    # Append system packages at the end, so that venv site-packages take precedence
     for system_path in _find_system_packages(venv_path):
         if system_path not in seen:
             scan_paths.append(system_path)
