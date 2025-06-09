@@ -55,3 +55,24 @@ def test_nonexistent_package():
         venv.create(tmpdir, with_pip=True)
         version = get_package_version_from_env(tmpdir, "NOT_EXISTING_PACKAGE")
         assert version is None
+
+
+def test_get_package_version_from_env_egg_info():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # Create a fake venv structure
+        venv_path = Path(tmpdir) / "venv"
+        site = venv_path / "lib" / "python3.11" / "site-packages"
+        site.mkdir(parents=True)
+
+        # Create an egg-info package
+        egg_info = site / "legacy-package-1.2.3.egg-info"
+        egg_info.mkdir()
+        (egg_info / "PKG-INFO").write_text("Name: legacy-package\nVersion: 1.2.3\n")
+
+        # Test version lookup
+        version = get_package_version_from_env(str(venv_path), "legacy-package")
+        assert version == "1.2.3"
+
+        # Test case-insensitive lookup
+        version = get_package_version_from_env(str(venv_path), "LEGACY-PACKAGE")
+        assert version == "1.2.3"

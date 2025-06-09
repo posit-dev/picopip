@@ -99,6 +99,15 @@ def make_dist_info(site, name, version):
     return dist
 
 
+def make_egg_info(site, name, version):
+    """Create a legacy egg-info package directory."""
+    egg_info = site / f"{name}-{version}.egg-info"
+    egg_info.mkdir()
+    # egg-info uses PKG-INFO instead of METADATA
+    (egg_info / "PKG-INFO").write_text(f"Name: {name}\nVersion: {version}\n")
+    return egg_info
+
+
 def test_get_packages_from_env_dist_info(fake_venv):
     venv, site = fake_venv
     make_dist_info(site, "foo", "1.2.3")
@@ -134,6 +143,37 @@ def test_get_packages_from_env_malformed(fake_venv):
     pkgs = get_packages_from_env(str(venv))
     # Should not raise, just skip
     assert pkgs == []
+
+
+def test_get_packages_from_env_egg_info(fake_venv):
+    """Test that legacy egg-info packages are correctly discovered."""
+    venv, site = fake_venv
+    make_egg_info(site, "legacy-pkg", "2.1.0")
+    pkgs = get_packages_from_env(str(venv))
+    assert ("legacy-pkg", "2.1.0") in pkgs
+
+
+def test_get_packages_from_env_mixed_formats(fake_venv):
+    """Test that both dist-info and egg-info packages are discovered together."""
+    venv, site = fake_venv
+    make_dist_info(site, "modern-pkg", "3.0.0")
+    make_egg_info(site, "legacy-pkg", "1.5.0")
+    pkgs = get_packages_from_env(str(venv))
+    pkg_dict = dict(pkgs)
+    assert pkg_dict["modern-pkg"] == "3.0.0"
+    assert pkg_dict["legacy-pkg"] == "1.5.0"
+
+
+def test_get_packages_from_env_egg_info_with_pth(fake_venv):
+    """Test that egg-info packages are discovered in paths from .pth files."""
+    venv, site = fake_venv
+    # Create the extra directory using the exact path as constructed by the code
+    extra = (site / "../extra_egg").absolute()
+    extra.mkdir(parents=True)
+    make_egg_info(extra, "external-legacy", "0.9.5")
+    (site / "extra_egg.pth").write_text("../extra_egg\n")
+    pkgs = get_packages_from_env(str(venv))
+    assert ("external-legacy", "0.9.5") in pkgs
 
 
 def test_e2e_readme_example():
