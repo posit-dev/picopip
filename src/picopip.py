@@ -9,10 +9,7 @@ without requiring the installation of pip itself.
 This makes picopip ideal for vendoring alongside software that needs
  to query or manage virtual environments in a self-contained manner.
 
-Note: This tool only supports modern Python packaging metadata (.dist-info)
-and does not support legacy .egg-info or .egg formats.
-
-Version: 0.2.0
+Version: 0.2.1
 Author: Alessandro Molina <alessandro.molina@posit.co>
 URL: https://github.com/posit-dev/picopip
 License: MIT
@@ -20,6 +17,7 @@ License: MIT
 
 import logging
 import site
+import itertools
 from importlib.metadata import PathDistribution
 from pathlib import Path
 from typing import List, Optional, Tuple
@@ -75,7 +73,7 @@ def get_packages_from_env(venv_path: str) -> List[Tuple[str, str]]:
     packages = []
     for path in get_site_package_paths(venv_path):
         log.debug(f"Scanning {path} for installed packages...")
-        for dist_info in path.glob("*.dist-info"):
+        for dist_info in itertools.chain(path.glob("*.dist-info"), path.glob("*.egg-info")):
             log.debug(f"Found distribution info: {dist_info}")
             try:
                 dist = PathDistribution(dist_info)
