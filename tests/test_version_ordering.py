@@ -87,7 +87,7 @@ def test_pre_release_dev_is_rejected():
 
 
 @pytest.mark.parametrize(
-    "longer, tagged",
+    ("longer", "tagged"),
     [
         ("1.2.3.4", "1.2.3.post5"),
         ("1.2.3.4", "1.2.3"),
