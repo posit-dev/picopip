@@ -23,7 +23,6 @@ from importlib.metadata import PathDistribution
 from pathlib import Path
 from typing import List, Optional, Tuple
 
-
 log = logging.getLogger(__name__)
 
 
@@ -137,7 +136,7 @@ def _find_system_packages(venv_path: str) -> List[Path]:
 def parse_version(version: str) -> Tuple[Tuple[int, ...], int]:
     """Parse the given version string and return a tuple suitable for comparison.
 
-    dev, pre, rc, alpha, beta, post releases are supported, 
+    dev, pre, rc, alpha, beta, post releases are supported,
     and represented as a numeric offset from the release number.
     Negative offsets signal pre-releases, positive offsets signal post-releases.
 
@@ -150,15 +149,15 @@ def parse_version(version: str) -> Tuple[Tuple[int, ...], int]:
 
 class _VersionParser:
     """Parse and normalize a version string according to PEP 440.
-    
-    Implements a subset of PEP 440 sufficient for practical version
-    comparison, excluding epochs (e.g. "1!1.0.0") and local versions (e.g. "1.0.0+abc")
-    which are rarely if ever used in released packages.
 
-    It also explicitly excludes support for combining pre-releases
-    with dev or post releases, which are not used for released packages,
-    they only make sense during development (e.g. "1.0.0rc1.dev2").
+    Implements a subset of PEP 440 sufficient for practical version comparison,
+    excluding epochs (e.g. "1!1.0.0") and local versions (e.g. "1.0.0+abc") which
+    are rarely used in released packages.
+
+    It also excludes support for combining pre-releases with dev or post
+    releases, which only make sense during development (e.g. "1.0.0rc1.dev2").
     """
+
     # This comes from https://packaging.python.org/en/latest/specifications/version-specifiers/#appendix-parsing-version-strings-with-regular-expressions
     VERSION_PATTERN = r"""
         v?
@@ -215,8 +214,8 @@ class _VersionParser:
     # For example, "1.0.0rc2" becomes ( (1,0,0), -9998 ), while
     # "1.0.0post3" becomes ( (1,0,0), 10003 ).
     # This guarantees that releases are always sortable as simple numeric tuples.
-    OFFSET_STAGE_SPAN = 10_000  # 9999 pre/post/dev releases should be "enough for anyone"
-    OFFSET_BASE = {   # dev < a < b < rc < release < post
+    OFFSET_STAGE_SPAN = 10_000  # 9999 pre/post/dev stages per release should be enough.
+    OFFSET_BASE = {  # dev < a < b < rc < release < post
         "dev": -4 * OFFSET_STAGE_SPAN,
         "a": -3 * OFFSET_STAGE_SPAN,
         "b": -2 * OFFSET_STAGE_SPAN,
