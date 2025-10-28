@@ -261,9 +261,13 @@ class _VersionParser:
             dev = self._parse_tagged_number(dev_letter, dev_number)
 
         if post and dev:
-            raise ValueError(f"Post releases with dev segments are not supported: {self.version!r}")
+            raise ValueError(
+                f"Post releases with dev segments are not supported: {self.version!r}"
+            )
         if pre and dev:
-            raise ValueError(f"Pre-release dev segments are not supported: {self.version!r}")
+            raise ValueError(
+                f"Pre-release dev segments are not supported: {self.version!r}"
+            )
 
         component = pre or dev or post or ("release", 0)
         offset = self.OFFSET_BASE[component[0]] + component[1]
