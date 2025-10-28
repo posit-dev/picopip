@@ -37,3 +37,21 @@ using `get_package_version_from_env`
 >>> print(version)
 '21.2.4'
 ```
+
+### Parse a version string
+
+`parse_version` normalizes a version into a tuple that follows the same ordering
+rules used by `pip`/`packaging`. The first element is the release components,
+the second is an offset encoding pre/dev/post markers so you can compare the
+tuples with standard operators.
+
+```python
+>>> from picopip import parse_version
+>>>
+>>> parse_version("1.13.5")
+((1, 13, 5), 0)
+>>> parse_version("1.13.5a1") < parse_version("1.13.5")
+True
+>>> parse_version("1.13.5.post2") > parse_version("1.13.5")
+True
+```
