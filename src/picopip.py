@@ -24,69 +24,7 @@ from pathlib import Path
 from typing import List, Optional, Tuple
 
 
-# This comes from https://packaging.python.org/en/latest/specifications/version-specifiers/#appendix-parsing-version-strings-with-regular-expressions
-_VERSION_PATTERN = r"""
-    v?
-    (?:
-        (?:(?P<epoch>[0-9]+)!)?                           # epoch
-        (?P<release>[0-9]+(?:\.[0-9]+)*)                  # release segment
-        (?P<pre>                                          # pre-release
-            [-_\.]?
-            (?P<pre_l>alpha|a|beta|b|preview|pre|c|rc)
-            [-_\.]?
-            (?P<pre_n>[0-9]+)?
-        )?
-        (?P<post>                                         # post release
-            (?:-(?P<post_n1>[0-9]+))
-            |
-            (?:
-                [-_\.]?
-                (?P<post_l>post|rev|r)
-                [-_\.]?
-                (?P<post_n2>[0-9]+)?
-            )
-        )?
-        (?P<dev>                                          # dev release
-            [-_\.]?
-            (?P<dev_l>dev)
-            [-_\.]?
-            (?P<dev_n>[0-9]+)?
-        )?
-    )
-    (?:\+(?P<local>[a-z0-9]+(?:[-_\.][a-z0-9]+)*))?       # local version
-"""
-
-_VERSION_REGEX = re.compile(
-    r"^\s*" + _VERSION_PATTERN + r"\s*$", re.VERBOSE | re.IGNORECASE
-)
-
-_VERSION_TAG_NORMALIZE = {
-    "a": "a",
-    "alpha": "a",
-    "b": "b",
-    "beta": "b",
-    "c": "rc",
-    "pre": "rc",
-    "preview": "rc",
-    "rc": "rc",
-    "post": "post",
-    "rev": "post",
-    "r": "post",
-    "dev": "dev",
-}
-
-_VERSION_OFFSET_SPAN = 10_000
-_VERSION_OFFSET = {
-    "dev": -4 * _VERSION_OFFSET_SPAN,
-    "a": -3 * _VERSION_OFFSET_SPAN,
-    "b": -2 * _VERSION_OFFSET_SPAN,
-    "rc": -1 * _VERSION_OFFSET_SPAN,
-    "release": 0,
-    "post": _VERSION_OFFSET_SPAN,
-}
-
 log = logging.getLogger(__name__)
-
 
 
 def get_site_package_paths(venv_path: str) -> List[Path]:
@@ -196,85 +134,166 @@ def _find_system_packages(venv_path: str) -> List[Path]:
     return scan_paths
 
 
-def parse_version(
-    version: str,
-) -> Tuple[int, ...]:
-    """Return a tuple implementing practical PEP 440 ordering for *version*.
+def parse_version(version: str) -> Tuple[Tuple[int, ...], int]:
+    """Parse the given version string and return a tuple suitable for comparison.
 
-    The tuple contains the integer components of the release followed by a
-    single *offset* element that encodes pre-release, post-release, and dev
-    markers. Epochs, local versions, pre-release dev markers (e.g. ``a1.dev1``),
-    and post-release dev variants are not supported. Pre-release numbers up to
-    9999 and standalone ``.dev`` numbers up to 9999 are accepted. Post releases
-    accept numbers up to 9999.
+    dev, pre, rc, alpha, beta, post releases are supported, 
+    and represented as a numeric offset from the release number.
+    Negative offsets signal pre-releases, positive offsets signal post-releases.
+
+    Epochs and local versions are not supported.
+
+    Raises ValueError if the version string is invalid or unsupported.
+    """
+    return _VersionParser(version).parse_key()
+
+
+class _VersionParser:
+    """Parse and normalize a version string according to PEP 440.
+    
+    Implements a subset of PEP 440 sufficient for practical version
+    comparison, excluding epochs (e.g. "1!1.0.0") and local versions (e.g. "1.0.0+abc")
+    which are rarely if ever used in released packages.
+
+    It also explicitly excludes support for combining pre-releases
+    with dev or post releases, which are not used for released packages,
+    they only make sense during development (e.g. "1.0.0rc1.dev2").
+    """
+    # This comes from https://packaging.python.org/en/latest/specifications/version-specifiers/#appendix-parsing-version-strings-with-regular-expressions
+    VERSION_PATTERN = r"""
+        v?
+        (?:
+            (?:(?P<epoch>[0-9]+)!)?                           # epoch
+            (?P<release>[0-9]+(?:\.[0-9]+)*)                  # release segment
+            (?P<pre>                                          # pre-release
+                [-_\.]?
+                (?P<pre_l>alpha|a|beta|b|preview|pre|c|rc)
+                [-_\.]?
+                (?P<pre_n>[0-9]+)?
+            )?
+            (?P<post>                                         # post release
+                (?:-(?P<post_n1>[0-9]+))
+                |
+                (?:
+                    [-_\.]?
+                    (?P<post_l>post|rev|r)
+                    [-_\.]?
+                    (?P<post_n2>[0-9]+)?
+                )
+            )?
+            (?P<dev>                                          # dev release
+                [-_\.]?
+                (?P<dev_l>dev)
+                [-_\.]?
+                (?P<dev_n>[0-9]+)?
+            )?
+        )
+        (?:\+(?P<local>[a-z0-9]+(?:[-_\.][a-z0-9]+)*))?       # local version
     """
 
-    match = _VERSION_REGEX.search(version)
-    if not match:
-        raise ValueError(f"Invalid version: {version!r}")
+    VERSION_REGEX = re.compile(
+        r"^\s*" + VERSION_PATTERN + r"\s*$", re.VERBOSE | re.IGNORECASE
+    )
 
-    if match.group("epoch"):
-        raise ValueError(f"Epochs are not supported: {version!r}")
-    if match.group("local"):
-        raise ValueError(f"Local versions are not supported: {version!r}")
+    TAG_NORMALIZE = {
+        "a": "a",
+        "alpha": "a",
+        "b": "b",
+        "beta": "b",
+        "c": "rc",
+        "pre": "rc",
+        "preview": "rc",
+        "rc": "rc",
+        "post": "post",
+        "rev": "post",
+        "r": "post",
+        "dev": "dev",
+    }
 
-    release_numbers = _normalize_release(match.group("release"))
-    pre = None
-    pre_letter = match.group("pre_l")
-    pre_number = match.group("pre_n")
-    if pre_letter or pre_number:
-        pre = _parse_tagged_number(pre_letter, pre_number)
+    # To simplify representing pre/post/dev stages as integers for comparison,
+    # we assign each stage a base offset, and add the stage number to it.
+    # For example, "1.0.0rc2" becomes ( (1,0,0), -9998 ), while
+    # "1.0.0post3" becomes ( (1,0,0), 10003 ).
+    # This guarantees that releases are always sortable as simple numeric tuples.
+    OFFSET_STAGE_SPAN = 10_000  # 9999 pre/post/dev releases should be "enough for anyone"
+    OFFSET_BASE = {   # dev < a < b < rc < release < post
+        "dev": -4 * OFFSET_STAGE_SPAN,
+        "a": -3 * OFFSET_STAGE_SPAN,
+        "b": -2 * OFFSET_STAGE_SPAN,
+        "rc": -1 * OFFSET_STAGE_SPAN,
+        "release": 0,
+        "post": OFFSET_STAGE_SPAN,
+    }
 
-    post = None
-    post_number = match.group("post_n1") or match.group("post_n2")
-    post_letter = match.group("post_l") or ("post" if post_number else None)
-    if post_letter and post_number is not None:
-        post = _parse_tagged_number(post_letter, post_number)
+    def __init__(self, version: str) -> None:
+        self.version = version
 
-    dev = None
-    dev_letter = match.group("dev_l")
-    dev_number = match.group("dev_n")
-    if dev_number and not dev_letter:
-        raise ValueError("Label required when number is provided")
-    if dev_letter:
-        dev = _parse_tagged_number(dev_letter, dev_number)
+    def parse_key(self) -> Tuple[Tuple[int, ...], int]:
+        """Return a tuple implementing practical PEP 440 ordering for the version."""
+        match = self.VERSION_REGEX.search(self.version)
+        if not match:
+            raise ValueError(f"Invalid version: {self.version!r}")
 
-    if post and dev:
-        raise ValueError(f"Post releases with dev segments are not supported: {version!r}")
-    if pre and dev:
-        raise ValueError(
-            f"Pre-release dev segments are not supported: {version!r}"
-        )
+        if match.group("epoch"):
+            raise ValueError(f"Epochs are not supported: {self.version!r}")
+        if match.group("local"):
+            raise ValueError(f"Local versions are not supported: {self.version!r}")
 
-    component = pre or dev or post or ("release", 0)
-    offset = _VERSION_OFFSET[component[0]] + component[1]
-    return (tuple(release_numbers), offset)
+        release_numbers = self._normalize_release(match.group("release"))
 
+        pre = None
+        pre_letter = match.group("pre_l")
+        pre_number = match.group("pre_n")
+        if pre_letter or pre_number:
+            pre = self._parse_tagged_number(pre_letter, pre_number)
 
-def _normalize_release(release: str) -> List[int]:
-    numbers = [int(part) for part in release.split(".")]
-    while numbers and numbers[-1] == 0:
-        numbers.pop()
-    if not numbers:
-        numbers = [0]
-    return numbers
+        post = None
+        post_number = match.group("post_n1") or match.group("post_n2")
+        post_letter = match.group("post_l") or ("post" if post_number else None)
+        if post_letter and post_number is not None:
+            post = self._parse_tagged_number(post_letter, post_number)
 
+        dev = None
+        dev_letter = match.group("dev_l")
+        dev_number = match.group("dev_n")
+        if dev_number and not dev_letter:
+            raise ValueError("Label required when number is provided")
+        if dev_letter:
+            dev = self._parse_tagged_number(dev_letter, dev_number)
 
-def _parse_tagged_number(
-    letter: Optional[str],
-    number: Optional[str],
-) -> Optional[Tuple[str, int]]:
-    if not letter:
-        return None
+        if post and dev:
+            raise ValueError(f"Post releases with dev segments are not supported: {self.version!r}")
+        if pre and dev:
+            raise ValueError(f"Pre-release dev segments are not supported: {self.version!r}")
 
-    normalized = _VERSION_TAG_NORMALIZE.get(letter.lower())
-    if normalized is None:
-        raise ValueError(f"Unsupported release tag: {letter!r}")
+        component = pre or dev or post or ("release", 0)
+        offset = self.OFFSET_BASE[component[0]] + component[1]
+        return (tuple(release_numbers), offset)
 
-    value = int(number or 0)
-    if value < 0:
-        raise ValueError(f"Release number cannot be negative: {value}")
-    if value >= _VERSION_OFFSET_SPAN:
-        raise ValueError(f"Release number too large: {value}")
+    def _normalize_release(self, release: str) -> List[int]:
+        numbers = [int(part) for part in release.split(".")]
+        while numbers and numbers[-1] == 0:
+            numbers.pop()
+        if not numbers:
+            numbers = [0]
+        return numbers
 
-    return normalized, value
+    def _parse_tagged_number(
+        self,
+        letter: Optional[str],
+        number: Optional[str],
+    ) -> Optional[Tuple[str, int]]:
+        if not letter:
+            return None
+
+        normalized = self.TAG_NORMALIZE.get(letter.lower())
+        if normalized is None:
+            raise ValueError(f"Unsupported release tag: {letter!r}")
+
+        value = int(number or 0)
+        if value < 0:
+            raise ValueError(f"Release number cannot be negative: {value}")
+        if value >= self.OFFSET_STAGE_SPAN:
+            raise ValueError(f"Release number too large: {value}")
+
+        return normalized, value
