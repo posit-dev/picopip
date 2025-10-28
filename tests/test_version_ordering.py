@@ -86,6 +86,10 @@ def test_pre_release_dev_is_rejected():
         parse_version("1.0a2.dev1")
 
 
+def test_post_without_number_defaults_to_zero():
+    assert parse_version("1.0.post") == parse_version("1.0.post0")
+
+
 @pytest.mark.parametrize(
     ("longer", "tagged"),
     [

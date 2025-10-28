@@ -243,20 +243,20 @@ class _VersionParser:
         pre = None
         pre_letter = match.group("pre_l")
         pre_number = match.group("pre_n")
-        if pre_letter or pre_number:
+        if pre_letter:
             pre = self._parse_tagged_number(pre_letter, pre_number)
 
+        # post releases are the only case where the number can be specified
+        # without a tag. In such case we treat it as "postN".
         post = None
         post_number = match.group("post_n1") or match.group("post_n2")
         post_letter = match.group("post_l") or ("post" if post_number else None)
-        if post_letter and post_number is not None:
+        if post_letter:
             post = self._parse_tagged_number(post_letter, post_number)
 
         dev = None
         dev_letter = match.group("dev_l")
         dev_number = match.group("dev_n")
-        if dev_number and not dev_letter:
-            raise ValueError("Label required when number is provided")
         if dev_letter:
             dev = self._parse_tagged_number(dev_letter, dev_number)
 
