@@ -37,22 +37,22 @@ def test_local_version_segments_order():
 
 
 def test_invalid_version_raises_value_error():
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Invalid version"):
         parse_version("not a version")
 
 
 def test_epoch_versions_raise_error():
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Epochs are not supported"):
         parse_version("1!0.9")
 
 
 def test_local_versions_raise_error():
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Local versions are not supported"):
         parse_version("1.0+abc")
 
 
 def test_dev_post_versions_raise_error():
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Post releases with dev segments"):
         parse_version("1.0.post1.dev1")
 
 
@@ -63,7 +63,7 @@ def test_parse_version_matches_expected_offset():
 
 
 def test_pre_dev_numbers_larger_than_slot_raise_error():
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Pre-release dev segments are not supported"):
         parse_version("1.0a1.dev99")
 
 
@@ -72,17 +72,17 @@ def test_large_dev_release_is_supported():
 
 
 def test_pre_number_out_of_range_is_rejected():
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Release number too large"):
         parse_version("1.0a10000")
 
 
 def test_dev_release_out_of_range_is_rejected():
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Release number too large"):
         parse_version("1.0.dev10000")
 
 
 def test_pre_release_dev_is_rejected():
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Pre-release dev segments are not supported"):
         parse_version("1.0a2.dev1")
 
 
