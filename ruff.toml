@@ -4,7 +4,7 @@ target-version = "py38"
 select = [
     "E", "F", "W", "I", "UP", "C90", "N", "D", "ANN", "S", "B", "A", "C4", "DTZ", "EM", "EXE", "FBT", "ICN", "INP", "ISC", "PIE", "PT", "Q", "RET", "RSE", "SIM", "T20", "TID", "TRY", "ARG", "PTH", "ERA", "PD", "PGH", "PL", "RUF"
 ]
-ignore = ["COM812", "D203", "D213"]
+ignore = ["COM812", "D203", "D213", "EM101", "EM102", "TRY003", "RUF012"]
 per-file-ignores = {"tests/*.py" = ["D100", "D101", "D102", "D103", "D104", "D105", "D106", "D107", "UP", "ANN", "S101", "S603"]}
 
 [format]
