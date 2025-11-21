@@ -26,7 +26,9 @@ from typing import List, Optional, Tuple
 log = logging.getLogger(__name__)
 
 
-def get_site_package_paths(venv_path: str, ignore_system_packages: bool = False) -> List[Path]:
+def get_site_package_paths(
+    venv_path: str, *, include_system_packages: bool = True
+) -> List[Path]:
     """Return all directories where packages might be installed for the given venv."""
     for version_dir in (Path(venv_path) / "lib").iterdir():
         if version_dir.name.startswith("python"):
@@ -59,7 +61,7 @@ def get_site_package_paths(venv_path: str, ignore_system_packages: bool = False)
             )
             continue
 
-    if not ignore_system_packages:
+    if include_system_packages:
         # Append system packages at the end, so that venv site-packages take precedence
         for system_path in _find_system_packages(venv_path):
             if system_path not in seen:
@@ -68,17 +70,21 @@ def get_site_package_paths(venv_path: str, ignore_system_packages: bool = False)
 
     return scan_paths
 
-def get_packages_from_env(venv_path: str, ignore_system_packages: bool = False) -> List[Tuple[str, str]]:
+
+def get_packages_from_env(
+    venv_path: str, *, ignore_system_packages: bool = False
+) -> List[Tuple[str, str]]:
     """Return a list of (name, version) for all installed packages in the given venv."""
+
     def _canonical_name(name: str) -> str:
-        """
-        PEP 503 normalization plus dashes as underscores.
-        """
+        """PEP 503 normalization plus dashes as underscores."""
         return re.sub(r"[-_.]+", "-", name).lower().replace("-", "_")
 
     seen = set()
     packages = []
-    for path in get_site_package_paths(venv_path, ignore_system_packages=ignore_system_packages):
+    for path in get_site_package_paths(
+        venv_path, include_system_packages=not ignore_system_packages
+    ):
         log.debug(f"Scanning {path} for installed packages...")
         for dist_info in itertools.chain(
             path.glob("*.dist-info"), path.glob("*.egg-info")
