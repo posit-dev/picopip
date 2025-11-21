@@ -153,6 +153,18 @@ def test_get_packages_from_env_egg_info(fake_venv):
     assert ("legacy-pkg", "2.1.0") in pkgs
 
 
+def test_get_packages_from_env_canonical_dedup(fake_venv):
+    """Packages differing only by dashes/underscores should be deduped."""
+    venv, site = fake_venv
+    make_dist_info(site, "pure-eval", "0.2.2")
+    extra = (site / "../dupe_extra").absolute()
+    extra.mkdir(parents=True)
+    make_dist_info(extra, "pure_eval", "0.2.3")
+    (site / "dupe_extra.pth").write_text("../dupe_extra\n")
+    pkgs = get_packages_from_env(str(venv))
+    assert pkgs == [("pure-eval", "0.2.2")]
+
+
 def test_get_packages_from_env_mixed_formats(fake_venv):
     """Test that both dist-info and egg-info packages are discovered together."""
     venv, site = fake_venv
@@ -174,6 +186,26 @@ def test_get_packages_from_env_egg_info_with_pth(fake_venv):
     (site / "extra_egg.pth").write_text("../extra_egg\n")
     pkgs = get_packages_from_env(str(venv))
     assert ("external-legacy", "0.9.5") in pkgs
+
+
+def test_get_packages_from_env_ignore_system_packages(tmp_path, monkeypatch):
+    """System packages should be omitted when ignore_system_packages is True."""
+    venv_dir = tmp_path / "venv"
+    site_dir = venv_dir / "lib" / "python3.11" / "site-packages"
+    site_dir.mkdir(parents=True)
+    (venv_dir / "pyvenv.cfg").write_text("include-system-site-packages = true\n")
+
+    system_site = tmp_path / "system_site"
+    system_site.mkdir()
+    make_dist_info(system_site, "system-pkg", "0.1.0")
+
+    monkeypatch.setattr("picopip.site.getsitepackages", lambda: [str(system_site)])
+
+    pkgs = get_packages_from_env(str(venv_dir))
+    assert ("system-pkg", "0.1.0") in pkgs
+
+    pkgs = get_packages_from_env(str(venv_dir), ignore_system_packages=True)
+    assert ("system-pkg", "0.1.0") not in pkgs
 
 
 def test_e2e_readme_example():
