@@ -9,7 +9,7 @@ without requiring the installation of pip itself.
 This makes picopip ideal for vendoring alongside software that needs
  to query or manage virtual environments in a self-contained manner.
 
-Version: 0.3.0
+Version: 0.4.0
 Author: Alessandro Molina <alessandro.molina@posit.co>
 URL: https://github.com/posit-dev/picopip
 License: MIT
