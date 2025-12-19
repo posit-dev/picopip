@@ -1,0 +1,19 @@
+---
+title: Sample Report
+---
+
+Some prose before code.
+
+```{python}
+import pandas as pd
+print(pd.__version__)
+```
+
+```{r}
+# not python, should be ignored
+print("r block")
+```
+
+```{python}
+from sklearn import metrics
+```
