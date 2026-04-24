@@ -123,9 +123,7 @@ def get_package_version_from_env(venv_path: str, package_name: str) -> Optional[
     return None
 
 
-def _extend_unique(
-    scan_paths: List[Path], seen: set, new_paths: List[Path]
-) -> None:
+def _extend_unique(scan_paths: List[Path], seen: set, new_paths: List[Path]) -> None:
     """Append paths to scan_paths that are not already in seen."""
     for path in new_paths:
         if path not in seen:
