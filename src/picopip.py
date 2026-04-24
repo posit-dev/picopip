@@ -71,12 +71,10 @@ def get_site_package_paths(
 
         # Include PYTHONPATH directories, which may contain packages installed
         # outside the venv (e.g., via supervisor.sh environment modules).
-        for pythonpath_entry in os.environ.get("PYTHONPATH", "").split(os.pathsep):
-            if pythonpath_entry:
-                pp = Path(pythonpath_entry).resolve()
-                if pp.exists() and pp.is_dir() and pp not in seen:
-                    scan_paths.append(pp)
-                    seen.add(pp)
+        for pythonpath_path in _find_pythonpath_packages():
+            if pythonpath_path not in seen:
+                scan_paths.append(pythonpath_path)
+                seen.add(pythonpath_path)
 
     return scan_paths
 
@@ -133,6 +131,17 @@ def get_package_version_from_env(venv_path: str, package_name: str) -> Optional[
         if name.lower() == package_name.lower():
             return version
     return None
+
+
+def _find_pythonpath_packages() -> List[Path]:
+    """Return existing directories listed in the PYTHONPATH environment variable."""
+    scan_paths = []
+    for entry in os.environ.get("PYTHONPATH", "").split(os.pathsep):
+        if entry:
+            pp = Path(entry).resolve()
+            if pp.exists() and pp.is_dir():
+                scan_paths.append(pp)
+    return scan_paths
 
 
 def _find_system_packages(venv_path: str) -> List[Path]:
