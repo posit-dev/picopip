@@ -63,18 +63,8 @@ def get_site_package_paths(
             continue
 
     if include_system_packages:
-        # Append system packages at the end, so that venv site-packages take precedence
-        for system_path in _find_system_packages(venv_path):
-            if system_path not in seen:
-                scan_paths.append(system_path)
-                seen.add(system_path)
-
-        # Include PYTHONPATH directories, which may contain packages installed
-        # outside the venv (e.g., via supervisor.sh environment modules).
-        for pythonpath_path in _find_pythonpath_packages():
-            if pythonpath_path not in seen:
-                scan_paths.append(pythonpath_path)
-                seen.add(pythonpath_path)
+        _extend_unique(scan_paths, seen, _find_system_packages(venv_path))
+        _extend_unique(scan_paths, seen, _find_pythonpath_packages())
 
     return scan_paths
 
@@ -131,6 +121,16 @@ def get_package_version_from_env(venv_path: str, package_name: str) -> Optional[
         if name.lower() == package_name.lower():
             return version
     return None
+
+
+def _extend_unique(
+    scan_paths: List[Path], seen: set, new_paths: List[Path]
+) -> None:
+    """Append paths to scan_paths that are not already in seen."""
+    for path in new_paths:
+        if path not in seen:
+            scan_paths.append(path)
+            seen.add(path)
 
 
 def _find_pythonpath_packages() -> List[Path]:
