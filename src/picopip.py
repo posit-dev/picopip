@@ -17,6 +17,7 @@ License: MIT
 
 import itertools
 import logging
+import os
 import re
 import site
 from importlib.metadata import PathDistribution
@@ -67,6 +68,15 @@ def get_site_package_paths(
             if system_path not in seen:
                 scan_paths.append(system_path)
                 seen.add(system_path)
+
+        # Include PYTHONPATH directories, which may contain packages installed
+        # outside the venv (e.g., via supervisor.sh environment modules).
+        for pythonpath_entry in os.environ.get("PYTHONPATH", "").split(os.pathsep):
+            if pythonpath_entry:
+                pp = Path(pythonpath_entry).resolve()
+                if pp.exists() and pp.is_dir() and pp not in seen:
+                    scan_paths.append(pp)
+                    seen.add(pp)
 
     return scan_paths
 

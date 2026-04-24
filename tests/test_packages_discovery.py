@@ -208,6 +208,94 @@ def test_get_packages_from_env_ignore_system_packages(tmp_path, monkeypatch):
     assert ("system-pkg", "0.1.0") not in pkgs
 
 
+def test_get_site_package_paths_includes_pythonpath(fake_venv, tmp_path, monkeypatch):
+    """PYTHONPATH directories should be included in scan paths."""
+    venv, site = fake_venv
+    pythonpath_dir = tmp_path / "pythonpath_packages"
+    pythonpath_dir.mkdir()
+    monkeypatch.setenv("PYTHONPATH", str(pythonpath_dir))
+    paths = get_site_package_paths(str(venv))
+    assert pythonpath_dir.resolve() in [p.resolve() for p in paths]
+
+
+def test_get_site_package_paths_excludes_pythonpath_without_system(
+    fake_venv, tmp_path, monkeypatch
+):
+    """PYTHONPATH should be excluded when include_system_packages is False."""
+    venv, site = fake_venv
+    pythonpath_dir = tmp_path / "pythonpath_packages"
+    pythonpath_dir.mkdir()
+    monkeypatch.setenv("PYTHONPATH", str(pythonpath_dir))
+    paths = get_site_package_paths(str(venv), include_system_packages=False)
+    assert pythonpath_dir.resolve() not in [p.resolve() for p in paths]
+
+
+def test_get_site_package_paths_pythonpath_empty(fake_venv, monkeypatch):
+    """Empty PYTHONPATH should not cause errors."""
+    venv, site = fake_venv
+    monkeypatch.setenv("PYTHONPATH", "")
+    paths = get_site_package_paths(str(venv))
+    assert len(paths) >= 1
+
+
+def test_get_site_package_paths_pythonpath_unset(fake_venv, monkeypatch):
+    """Unset PYTHONPATH should not cause errors."""
+    venv, site = fake_venv
+    monkeypatch.delenv("PYTHONPATH", raising=False)
+    paths = get_site_package_paths(str(venv))
+    assert len(paths) >= 1
+
+
+def test_get_site_package_paths_pythonpath_nonexistent(fake_venv, monkeypatch):
+    """Nonexistent PYTHONPATH directories should be silently ignored."""
+    venv, site = fake_venv
+    monkeypatch.setenv("PYTHONPATH", "/nonexistent/path/that/does/not/exist")
+    paths = get_site_package_paths(str(venv))
+    assert not any(str(p) == "/nonexistent/path/that/does/not/exist" for p in paths)
+
+
+def test_get_site_package_paths_pythonpath_multiple(fake_venv, tmp_path, monkeypatch):
+    """Multiple PYTHONPATH entries should all be included."""
+    import os
+
+    venv, site = fake_venv
+    dir_a = tmp_path / "path_a"
+    dir_b = tmp_path / "path_b"
+    dir_a.mkdir()
+    dir_b.mkdir()
+    monkeypatch.setenv("PYTHONPATH", os.pathsep.join([str(dir_a), str(dir_b)]))
+    paths = get_site_package_paths(str(venv))
+    resolved = [p.resolve() for p in paths]
+    assert dir_a.resolve() in resolved
+    assert dir_b.resolve() in resolved
+
+
+def test_get_packages_from_env_finds_pythonpath_packages(
+    fake_venv, tmp_path, monkeypatch
+):
+    """Packages in PYTHONPATH directories should be discovered."""
+    venv, site = fake_venv
+    pythonpath_dir = tmp_path / "pythonpath_packages"
+    pythonpath_dir.mkdir()
+    make_dist_info(pythonpath_dir, "external-pkg", "2.0.0")
+    monkeypatch.setenv("PYTHONPATH", str(pythonpath_dir))
+    pkgs = get_packages_from_env(str(venv))
+    assert ("external-pkg", "2.0.0") in pkgs
+
+
+def test_get_packages_from_env_ignores_pythonpath_with_ignore_system(
+    fake_venv, tmp_path, monkeypatch
+):
+    """PYTHONPATH packages should be excluded when ignore_system_packages is True."""
+    venv, site = fake_venv
+    pythonpath_dir = tmp_path / "pythonpath_packages"
+    pythonpath_dir.mkdir()
+    make_dist_info(pythonpath_dir, "external-pkg", "2.0.0")
+    monkeypatch.setenv("PYTHONPATH", str(pythonpath_dir))
+    pkgs = get_packages_from_env(str(venv), ignore_system_packages=True)
+    assert ("external-pkg", "2.0.0") not in pkgs
+
+
 def test_e2e_readme_example():
     with tempfile.TemporaryDirectory() as tmpdir:
         venv.create(tmpdir, with_pip=True)
