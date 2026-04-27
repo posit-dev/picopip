@@ -132,7 +132,12 @@ def _extend_unique(scan_paths: List[Path], seen: set, new_paths: List[Path]) -> 
 
 
 def _find_pythonpath_packages() -> List[Path]:
-    """Return existing directories listed in the PYTHONPATH environment variable."""
+    """Return existing directories listed in the PYTHONPATH environment variable.
+
+    PYTHONPATH is read from the process running picopip, which may differ from
+    the interpreter that will import from the venv. Results are only meaningful
+    when the two processes share the same PYTHONPATH value.
+    """
     scan_paths = []
     for entry in os.environ.get("PYTHONPATH", "").split(os.pathsep):
         if entry:
