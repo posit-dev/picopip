@@ -17,6 +17,7 @@ License: MIT
 
 import itertools
 import logging
+import os
 import re
 import site
 from importlib.metadata import PathDistribution
@@ -62,11 +63,8 @@ def get_site_package_paths(
             continue
 
     if include_system_packages:
-        # Append system packages at the end, so that venv site-packages take precedence
-        for system_path in _find_system_packages(venv_path):
-            if system_path not in seen:
-                scan_paths.append(system_path)
-                seen.add(system_path)
+        _extend_unique(scan_paths, seen, _find_system_packages(venv_path))
+        _extend_unique(scan_paths, seen, _find_pythonpath_packages())
 
     return scan_paths
 
@@ -123,6 +121,30 @@ def get_package_version_from_env(venv_path: str, package_name: str) -> Optional[
         if name.lower() == package_name.lower():
             return version
     return None
+
+
+def _extend_unique(scan_paths: List[Path], seen: set, new_paths: List[Path]) -> None:
+    """Append paths to scan_paths that are not already in seen."""
+    for path in new_paths:
+        if path not in seen:
+            scan_paths.append(path)
+            seen.add(path)
+
+
+def _find_pythonpath_packages() -> List[Path]:
+    """Return existing directories listed in the PYTHONPATH environment variable.
+
+    PYTHONPATH is read from the process running picopip, which may differ from
+    the interpreter that will import from the venv. Results are only meaningful
+    when the two processes share the same PYTHONPATH value.
+    """
+    scan_paths = []
+    for entry in os.environ.get("PYTHONPATH", "").split(os.pathsep):
+        if entry:
+            pp = Path(entry).resolve()
+            if pp.exists() and pp.is_dir():
+                scan_paths.append(pp)
+    return scan_paths
 
 
 def _find_system_packages(venv_path: str) -> List[Path]:
