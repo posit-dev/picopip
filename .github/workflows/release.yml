@@ -1,0 +1,42 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - '*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  lint:
+    uses: ./.github/workflows/ruff.yml
+
+  test:
+    uses: ./.github/workflows/tests.yml
+
+  release:
+    needs: [lint, test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate tag format
+        run: |
+          if ! echo "$GITHUB_REF_NAME" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::Tag '$GITHUB_REF_NAME' does not match format N.N.N"
+            exit 1
+          fi
+
+      - name: Check version matches tag
+        run: |
+          FILE_VERSION=$(grep -oP '^Version: \K.*' src/picopip.py)
+          if [ "$GITHUB_REF_NAME" != "$FILE_VERSION" ]; then
+            echo "::error::Tag '$GITHUB_REF_NAME' does not match Version in src/picopip.py ('$FILE_VERSION')"
+            exit 1
+          fi
+
+      - name: Create GitHub release
+        run: gh release create "$GITHUB_REF_NAME" --generate-notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

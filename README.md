@@ -55,3 +55,19 @@ True
 >>> parse_version("1.13.5.post2") > parse_version("1.13.5")
 True
 ```
+
+## Releasing
+
+Releases are cut by pushing a `N.N.N` git tag. The `Release` workflow runs
+lint and tests, then publishes a GitHub release with auto-generated notes.
+
+1. Bump the `Version:` line in `src/picopip.py` on `main` and merge.
+2. Tag the release commit with the matching version and push the tag:
+
+   ```sh
+   git tag 0.5.1
+   git push origin 0.5.1
+   ```
+
+The workflow fails if the tag does not match `N.N.N` or does not match the
+`Version:` line in `src/picopip.py`, so both must be kept in sync.
