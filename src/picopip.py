@@ -195,9 +195,12 @@ def parse_constraints(
     ``V'`` drops the last segment of ``V`` and bumps the new last, per PEP 440.
     """
     ops = {
-        "==": operator.eq, "!=": operator.ne,
-        ">=": operator.ge, "<=": operator.le,
-        ">": operator.gt, "<": operator.lt,
+        "==": operator.eq,
+        "!=": operator.ne,
+        ">=": operator.ge,
+        "<=": operator.le,
+        ">": operator.gt,
+        "<": operator.lt,
     }
     constraints = []
     for op, ver in re.findall(r"(===|==|!=|<=|>=|~=|<|>)\s*([^\s,]+)", spec):
