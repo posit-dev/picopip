@@ -72,7 +72,7 @@ CASES = [
 
 @pytest.mark.parametrize(("spec", "matching", "non_matching"), CASES)
 def test_constraint_satisfaction(spec, matching, non_matching):
-    constraints = parse_constraints(spec)
+    _name, constraints = parse_constraints(spec)
 
     matching_v = parse_version(matching)
     assert all(op(matching_v, cv) for op, cv in constraints), (
@@ -83,6 +83,30 @@ def test_constraint_satisfaction(spec, matching, non_matching):
     assert not all(op(non_matching_v, cv) for op, cv in constraints), (
         f"{non_matching!r} should not satisfy {spec!r}"
     )
+
+
+@pytest.mark.parametrize(
+    ("spec", "expected_name"),
+    [
+        ("aiokafka >= 0.8, < 1.0", "aiokafka"),
+        ("aio_pika >= 7.2.0", "aio_pika"),
+        ("cassandra-driver ~= 3.25", "cassandra-driver"),
+        ("PyMySQL < 2", "PyMySQL"),
+        ("foo>=1.0", "foo"),
+        ("foo", "foo"),
+        (">= 0.5, < 1.0", None),
+        ("", None),
+    ],
+)
+def test_parse_constraints_extracts_name(spec, expected_name):
+    name, _ = parse_constraints(spec)
+    assert name == expected_name
+
+
+def test_bare_name_has_no_constraints():
+    name, constraints = parse_constraints("foo")
+    assert name == "foo"
+    assert constraints == []
 
 
 def test_tilde_eq_rejects_single_segment():

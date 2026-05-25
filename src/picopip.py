@@ -184,12 +184,13 @@ def parse_version(version: str) -> Tuple[Tuple[int, ...], int]:
 
 def parse_constraints(
     spec: str,
-) -> List[Tuple[Callable, Tuple[Tuple[int, ...], int]]]:
-    """Parse a constraint spec into a list of ``(comparator, parsed_version)`` pairs.
+) -> Tuple[Optional[str], List[Tuple[Callable, Tuple[Tuple[int, ...], int]]]]:
+    """Parse a requirement spec into ``(name, [(comparator, parsed_version), ...])``.
 
-    Accepts either a bare spec (``">= 0.8, < 1.0"``) or a full requirement line
-    (``"aiokafka >= 0.8, < 1.0"``); any text before the first operator is
-    treated as a package name and ignored.
+    Accepts either a bare spec (``">= 0.8, < 1.0"``) or a full requirement
+    line (``"aiokafka >= 0.8, < 1.0"``). Any text before the first operator is
+    returned as the package name (with original case preserved); ``None`` when
+    the spec is bare.
 
     ``~= V`` is expanded into the equivalent ``>= V`` and ``< V'`` pair, where
     ``V'`` drops the last segment of ``V`` and bumps the new last, per PEP 440.
@@ -202,8 +203,11 @@ def parse_constraints(
         ">": operator.gt,
         "<": operator.lt,
     }
+    matches = list(re.finditer(r"(===|==|!=|<=|>=|~=|<|>)\s*([^\s,]+)", spec))
+    name = (spec[: matches[0].start()] if matches else spec).strip() or None
     constraints = []
-    for op, ver in re.findall(r"(===|==|!=|<=|>=|~=|<|>)\s*([^\s,]+)", spec):
+    for m in matches:
+        op, ver = m.group(1), m.group(2)
         if op == "~=":
             # PEP 440 ~= upper bound: drop the last segment, bump the new last.
             # e.g. "1.4.5" -> head=["1","4"] -> ["1","5"] -> upper "1.5"
@@ -217,7 +221,7 @@ def parse_constraints(
             constraints.append((operator.lt, parse_version(".".join(head))))
         else:
             constraints.append((ops[op], parse_version(ver)))
-    return constraints
+    return name, constraints
 
 
 class _VersionParser:
