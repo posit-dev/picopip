@@ -339,6 +339,30 @@ def test_get_packages_from_env_path_as_target_ignores_pth_and_pythonpath(
     assert pkgs == [("foo", "1.0.0")]
 
 
+def test_get_site_package_paths_missing_layout_raises(tmp_path):
+    """An invalid venv (no lib/pythonX.Y/site-packages) must fail loudly."""
+    bogus = tmp_path / "not_a_venv"
+    bogus.mkdir()
+    with pytest.raises(NotADirectoryError):
+        get_site_package_paths(str(bogus))
+
+
+def test_get_site_package_paths_multiple_versions_raises(tmp_path):
+    """A venv with more than one python site-packages is ambiguous."""
+    venv = tmp_path / "venv"
+    (venv / "lib" / "python3.11" / "site-packages").mkdir(parents=True)
+    (venv / "lib" / "python3.12" / "site-packages").mkdir(parents=True)
+    with pytest.raises(RuntimeError):
+        get_site_package_paths(str(venv))
+
+
+def test_get_packages_from_env_path_as_target_missing_dir_raises(tmp_path):
+    """A nonexistent target path must raise instead of silently returning []."""
+    missing = tmp_path / "does_not_exist"
+    with pytest.raises(NotADirectoryError):
+        get_packages_from_env(str(missing), path_as_target=True)
+
+
 def test_e2e_readme_example():
     with tempfile.TemporaryDirectory() as tmpdir:
         venv.create(tmpdir, with_pip=True)
