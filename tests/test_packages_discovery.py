@@ -295,6 +295,50 @@ def test_get_packages_from_env_ignores_pythonpath_with_ignore_system(
     assert ("external-pkg", "2.0.0") not in pkgs
 
 
+def test_get_packages_from_env_path_as_target(tmp_path):
+    """path_as_target scans the given directory directly for dist-info entries."""
+    target = tmp_path / "target"
+    target.mkdir()
+    make_dist_info(target, "foo", "1.2.3")
+    make_egg_info(target, "legacy", "0.9.0")
+    pkgs = get_packages_from_env(str(target), path_as_target=True)
+    assert pkgs == [("foo", "1.2.3"), ("legacy", "0.9.0")]
+
+
+def test_get_packages_from_env_path_as_target_skips_venv_layout(tmp_path):
+    """path_as_target must not require a lib/pythonX.Y/site-packages structure."""
+    target = tmp_path / "flat_target"
+    target.mkdir()
+    # No lib/pythonX.Y/site-packages here; the default mode would raise.
+    make_dist_info(target, "foo", "1.0.0")
+    pkgs = get_packages_from_env(str(target), path_as_target=True)
+    assert pkgs == [("foo", "1.0.0")]
+
+
+def test_get_packages_from_env_path_as_target_ignores_pth_and_pythonpath(
+    tmp_path, monkeypatch
+):
+    """path_as_target must not expand .pth files or read PYTHONPATH."""
+    target = tmp_path / "target"
+    target.mkdir()
+    make_dist_info(target, "foo", "1.0.0")
+
+    # A sibling directory referenced from a .pth file must be ignored.
+    extra = tmp_path / "extra"
+    extra.mkdir()
+    make_dist_info(extra, "from-pth", "9.9.9")
+    (target / "extra.pth").write_text("../extra\n")
+
+    # PYTHONPATH must also be ignored.
+    pythonpath_dir = tmp_path / "pp"
+    pythonpath_dir.mkdir()
+    make_dist_info(pythonpath_dir, "from-pythonpath", "1.1.1")
+    monkeypatch.setenv("PYTHONPATH", str(pythonpath_dir))
+
+    pkgs = get_packages_from_env(str(target), path_as_target=True)
+    assert pkgs == [("foo", "1.0.0")]
+
+
 def test_e2e_readme_example():
     with tempfile.TemporaryDirectory() as tmpdir:
         venv.create(tmpdir, with_pip=True)
