@@ -56,6 +56,28 @@ True
 True
 ```
 
+### Check a version against a constraint
+
+`parse_constraints` parses a requirement spec like `"aiokafka >= 0.8, < 1.0"`
+into the package name and a list of `(comparator, parsed_version)` pairs.
+Apply every pair to a parsed version to decide whether it satisfies the spec.
+
+```python
+>>> from picopip import parse_constraints, parse_version
+>>>
+>>> name, constraints = parse_constraints("aiokafka >= 0.8, < 1.0")
+>>> name
+'aiokafka'
+>>> v = parse_version("0.9.1")
+>>> all(op(v, cv) for op, cv in constraints)
+True
+>>> v = parse_version("1.0.0")
+>>> all(op(v, cv) for op, cv in constraints)
+False
+```
+
+The name is `None` for bare specs (`">= 0.8, < 1.0"`).
+ 
 ## Releasing
 
 Releases are cut by pushing a `N.N.N` git tag. The `Release` workflow runs

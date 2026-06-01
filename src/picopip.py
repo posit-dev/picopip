@@ -17,12 +17,13 @@ License: MIT
 
 import itertools
 import logging
+import operator
 import os
 import re
 import site
 from importlib.metadata import PathDistribution
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Callable, List, Optional, Tuple
 
 log = logging.getLogger(__name__)
 
@@ -179,6 +180,48 @@ def parse_version(version: str) -> Tuple[Tuple[int, ...], int]:
     Raises ValueError if the version string is invalid or unsupported.
     """
     return _VersionParser(version).parse_key()
+
+
+def parse_constraints(
+    spec: str,
+) -> Tuple[Optional[str], List[Tuple[Callable, Tuple[Tuple[int, ...], int]]]]:
+    """Parse a requirement spec into ``(name, [(comparator, parsed_version), ...])``.
+
+    Accepts either a bare spec (``">= 0.8, < 1.0"``) or a full requirement
+    line (``"aiokafka >= 0.8, < 1.0"``). Any text before the first operator is
+    returned as the package name (with original case preserved); ``None`` when
+    the spec is bare.
+
+    ``~= V`` is expanded into the equivalent ``>= V`` and ``< V'`` pair, where
+    ``V'`` drops the last segment of ``V`` and bumps the new last, per PEP 440.
+    """
+    ops = {
+        "==": operator.eq,
+        "!=": operator.ne,
+        ">=": operator.ge,
+        "<=": operator.le,
+        ">": operator.gt,
+        "<": operator.lt,
+    }
+    matches = list(re.finditer(r"(===|==|!=|<=|>=|~=|<|>)\s*([^\s,]+)", spec))
+    name = (spec[: matches[0].start()] if matches else spec).strip() or None
+    constraints = []
+    for m in matches:
+        op, ver = m.group(1), m.group(2)
+        if op == "~=":
+            # PEP 440 ~= upper bound: drop the last segment, bump the new last.
+            # e.g. "1.4.5" -> head=["1","4"] -> ["1","5"] -> upper "1.5"
+            *head, _ = ver.split(".")
+            if not head:
+                raise ValueError(
+                    f"~= requires a multi-segment version: {ver!r}",
+                )
+            head[-1] = str(int(head[-1]) + 1)
+            constraints.append((operator.ge, parse_version(ver)))
+            constraints.append((operator.lt, parse_version(".".join(head))))
+        else:
+            constraints.append((ops[op], parse_version(ver)))
+    return name, constraints
 
 
 class _VersionParser:
