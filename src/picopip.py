@@ -32,13 +32,16 @@ def get_site_package_paths(
     venv_path: str, *, include_system_packages: bool = True
 ) -> List[Path]:
     """Return all directories where packages might be installed for the given venv."""
-    for version_dir in (Path(venv_path) / "lib").iterdir():
-        if version_dir.name.startswith("python"):
-            site_packages = version_dir / "site-packages"
-            break
-    else:
-        msg = "Cannot locate site-packages in lib/pythonX.Y"
-        raise RuntimeError(msg)
+    matches = sorted((Path(venv_path) / "lib").glob("python*/site-packages"))
+    if not matches:
+        raise NotADirectoryError(
+            f"Cannot locate site-packages in {venv_path}/lib/python*/site-packages"
+        )
+    if len(matches) > 1:
+        raise RuntimeError(
+            f"Multiple python site-packages found under {venv_path}/lib: {matches}"
+        )
+    site_packages = matches[0]
 
     seen = {site_packages}
     scan_paths = [site_packages]
@@ -71,19 +74,38 @@ def get_site_package_paths(
 
 
 def get_packages_from_env(
-    venv_path: str, *, ignore_system_packages: bool = False
+    venv_path: str,
+    *,
+    ignore_system_packages: bool = False,
+    path_as_target: bool = False,
 ) -> List[Tuple[str, str]]:
-    """Return a list of (name, version) for all installed packages in the given venv."""
+    """Return a list of (name, version) for all installed packages in the given venv.
+
+    :param str venv_path: Path to a virtual environment, or to a flat directory
+        of installed packages when ``path_as_target`` is True.
+    :param bool ignore_system_packages: Exclude system site-packages and
+        PYTHONPATH entries. Ignored when ``path_as_target`` is True.
+    :param bool path_as_target: Treat ``venv_path`` as the site-packages
+        directory itself (e.g. the output of ``pip install --target <dir>``).
+        Skips venv layout, ``.pth`` expansion, system, and PYTHONPATH discovery.
+    """
 
     def _canonical_name(name: str) -> str:
         """PEP 503 normalization plus dashes as underscores."""
         return re.sub(r"[-_.]+", "-", name).lower().replace("-", "_")
 
+    if path_as_target:
+        scan_paths = [Path(venv_path)]
+    else:
+        scan_paths = get_site_package_paths(
+            venv_path, include_system_packages=not ignore_system_packages
+        )
+
     seen = set()
     packages = []
-    for path in get_site_package_paths(
-        venv_path, include_system_packages=not ignore_system_packages
-    ):
+    for path in scan_paths:
+        if not path.is_dir():
+            raise NotADirectoryError(f"Not a directory: {path}")
         log.debug(f"Scanning {path} for installed packages...")
         for dist_info in itertools.chain(
             path.glob("*.dist-info"), path.glob("*.egg-info")
@@ -91,7 +113,7 @@ def get_packages_from_env(
             log.debug(f"Found distribution info: {dist_info}")
             try:
                 dist = PathDistribution(dist_info)
-                raw_name = dist.metadata["Name"]
+                raw_name = dist.metadata.get("Name")
                 version = dist.version
                 if not raw_name:
                     log.error(

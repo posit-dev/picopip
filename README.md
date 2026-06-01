@@ -25,6 +25,34 @@ You can use `get_packages_from_env` to list all installed packages in a Python v
 - `get_packages_from_env(<venv_path>)` returns a list of `(name, version)` tuples for all installed packages in the given virtual environment.
 - You can use any venv path, and the function will find all packages, including those installed via pip.
 
+### Scan a target directory (`pip install --target`)
+
+By default `get_packages_from_env` expects a full virtual environment layout
+(`lib/pythonX.Y/site-packages`, `.pth` expansion, system and `PYTHONPATH`
+discovery). If you instead installed packages into a flat directory with
+`pip install --target <dir>`, pass `path_as_target=True` to scan that directory
+directly.
+
+```sh
+pip install --target ./vendor requests
+```
+
+```python
+>>> from picopip import get_packages_from_env
+>>>
+>>> pkgs = get_packages_from_env("./vendor", path_as_target=True)
+>>> print(pkgs)
+[('certifi', '2025.4.26'), ('charset-normalizer', '3.4.2'), ('idna', '3.10'),
+ ('requests', '2.32.3'), ('urllib3', '2.4.0')]
+```
+
+With `path_as_target=True`:
+
+- `venv_path` is treated as the site-packages directory itself, so no
+  `lib/pythonX.Y/site-packages` structure is required.
+- `.pth` files are not expanded and `PYTHONPATH` is not read.
+- `ignore_system_packages` is ignored (system packages are never scanned).
+
 ### Get version of a package
 
 If you only need the version of a specific package, you can get it
