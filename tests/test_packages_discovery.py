@@ -296,7 +296,7 @@ def test_get_packages_from_env_ignores_pythonpath_with_ignore_system(
 
 
 def test_get_packages_from_env_path_as_target(tmp_path):
-    """path_as_target scans the given directory directly for dist-info entries."""
+    """path_as_target scans the given directory for .dist-info and .egg-info."""
     target = tmp_path / "target"
     target.mkdir()
     make_dist_info(target, "foo", "1.2.3")
