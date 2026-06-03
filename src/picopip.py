@@ -135,12 +135,34 @@ def get_packages_from_env(
     return sorted(packages, key=lambda x: x[0].lower())
 
 
-def get_package_version_from_env(venv_path: str, package_name: str) -> Optional[str]:
+def get_package_version_from_env(
+    venv_path: str,
+    package_name: str,
+    *,
+    ignore_system_packages: bool = False,
+    path_as_target: bool = False,
+) -> Optional[str]:
     """Return the version of a package installed in the given venv.
 
-    Returns None if not found or not installed.
+    Returns None if not found or not installed. Both ``ignore_system_packages``
+    and ``path_as_target`` are forwarded to :func:`get_packages_from_env` with
+    the same semantics.
+
+    :param str venv_path: Path to a virtual environment, or to a flat directory
+        of installed packages when ``path_as_target`` is True.
+    :param str package_name: Name of the package to look up. Matched
+        case-insensitively against the raw distribution names.
+    :param bool ignore_system_packages: Exclude system site-packages and
+        PYTHONPATH entries. Ignored when ``path_as_target`` is True.
+    :param bool path_as_target: Treat ``venv_path`` as the site-packages
+        directory itself (e.g. the output of ``pip install --target <dir>``).
     """
-    for name, version in get_packages_from_env(venv_path):
+    packages = get_packages_from_env(
+        venv_path,
+        ignore_system_packages=ignore_system_packages,
+        path_as_target=path_as_target,
+    )
+    for name, version in packages:
         if name.lower() == package_name.lower():
             return version
     return None
