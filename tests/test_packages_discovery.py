@@ -214,10 +214,14 @@ def test_get_packages_from_env_skips_nonexistent_system_site_packages(
 ):
     """A nonexistent path returned by site.getsitepackages() must not crash.
 
-    On some platforms/interpreters site.getsitepackages() can list a path
-    (e.g. a prefix-based site-packages directory) that doesn't actually
-    exist on disk. It should be silently skipped, like nonexistent .pth
-    and PYTHONPATH entries already are, instead of raising.
+    site.getsitepackages() always includes sys.prefix's site-packages dir,
+    regardless of whether it exists. For a CPython built from source with
+    the default `configure` prefix (/usr/local) -- common for manually
+    installed system interpreters, e.g. on RHEL 9 -- that resolves to
+    /usr/local/lib/pythonX.Y/site-packages, which is only created once a
+    package is actually pip-installed there outside a venv, so it's
+    frequently absent. It should be silently skipped, like nonexistent
+    .pth and PYTHONPATH entries already are, instead of raising.
     """
     venv, site = fake_venv
     (venv / "pyvenv.cfg").write_text("include-system-site-packages = true\n")
