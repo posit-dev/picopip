@@ -209,6 +209,27 @@ def test_get_packages_from_env_ignore_system_packages(tmp_path, monkeypatch):
     assert ("system-pkg", "0.1.0") not in pkgs
 
 
+def test_get_packages_from_env_skips_nonexistent_system_site_packages(
+    fake_venv, tmp_path, monkeypatch
+):
+    """A nonexistent path returned by site.getsitepackages() must not crash.
+
+    On some platforms/interpreters site.getsitepackages() can list a path
+    (e.g. a prefix-based site-packages directory) that doesn't actually
+    exist on disk. It should be silently skipped, like nonexistent .pth
+    and PYTHONPATH entries already are, instead of raising.
+    """
+    venv, site = fake_venv
+    (venv / "pyvenv.cfg").write_text("include-system-site-packages = true\n")
+    make_dist_info(site, "venv-pkg", "1.0.0")
+
+    missing_site = tmp_path / "does_not_exist" / "site-packages"
+    monkeypatch.setattr("picopip.site.getsitepackages", lambda: [str(missing_site)])
+
+    pkgs = get_packages_from_env(str(venv))
+    assert ("venv-pkg", "1.0.0") in pkgs
+
+
 def test_get_site_package_paths_includes_pythonpath(fake_venv, tmp_path, monkeypatch):
     """PYTHONPATH directories should be included in scan paths."""
     venv, _site = fake_venv
