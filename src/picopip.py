@@ -206,15 +206,6 @@ def _find_system_packages(venv_path: str) -> List[Path]:
                 include_system_site = line.split("=", 1)[1].strip()
                 if include_system_site == "true":
                     for sys_path in site.getsitepackages():
-                        # site.getsitepackages() includes sys.prefix's
-                        # site-packages dir unconditionally. On a CPython
-                        # built from source (default `configure` prefix is
-                        # /usr/local, common for manually-installed system
-                        # interpreters on RHEL 9 and similar distros), that
-                        # resolves to /usr/local/lib/pythonX.Y/site-packages,
-                        # which is only created once something is actually
-                        # pip-installed there outside a venv, so it's often
-                        # absent.
                         path = Path(sys_path)
                         if path.exists() and path.is_dir():
                             scan_paths.append(path)
