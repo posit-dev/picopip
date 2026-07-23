@@ -206,7 +206,9 @@ def _find_system_packages(venv_path: str) -> List[Path]:
                 include_system_site = line.split("=", 1)[1].strip()
                 if include_system_site == "true":
                     for sys_path in site.getsitepackages():
-                        scan_paths.append(Path(sys_path))
+                        path = Path(sys_path)
+                        if path.exists() and path.is_dir():
+                            scan_paths.append(path)
                 break
 
     return scan_paths
